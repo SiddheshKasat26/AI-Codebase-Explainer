@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Codebase Explainer</title>
+
+    <!-- Marked.js converts Markdown text to HTML -->
+    <!-- We load it from a CDN — no install needed! -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <style>
+        /* --- Reset & Base --- */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box; /* makes sizing predictable */
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #0f1117; /* dark background */
+            color: #e0e0e0; /* light text */
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+
+        /* --- Page Container --- */
+        .container {
+            max-width: 860px; /* don't stretch too wide on big screens */
+            margin: 0 auto; /* center it horizontally */
+        }
+
+        /* --- Header --- */
+        h1 {
+            text-align: center;
+            font-size: 2rem;
+            margin-bottom: 8px;
+            color: #7c83fd; /* purple accent */
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #888;
+            margin-bottom: 36px;
+            font-size: 0.95rem;
+        }
+
+        /* --- Input Card --- */
+        .card {
+            background: #1a1d27;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+            border: 1px solid #2a2d3e;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 10px;
+            font-size: 0.9rem;
+            color: #aaa;
+            letter-spacing: 0.5px;
+        }
+
+        /* --- Code Textarea --- */
+        textarea {
+            width: 100%;
+            height: 220px;
+            background: #0f1117;
+            color: #e0e0e0;
+            border: 1px solid #2a2d3e;
+            border-radius: 8px;
+            padding: 14px;
+            font-family: 'Courier New', monospace; /* looks like code */
+            font-size: 0.9rem;
+            resize: vertical; /* user can drag to resize height */
+            outline: none;
+            transition: border 0.2s;
+        }
+
+        textarea:focus {
+            border-color: #7c83fd; /* purple glow when typing */
+        }
+
+        /* --- Button --- */
+        button {
+            margin-top: 16px;
+            width: 100%;
+            padding: 14px;
+            background: #7c83fd;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer; /* hand cursor on hover */
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background: #6169f5;
+        }
+
+        /* "disabled" state — while AI is thinking */
+        button:disabled {
+            background: #3a3d5c;
+            cursor: not-allowed;
+        }
+
+        /* Style for the "Try Again" button — different color */
+        #try-again-btn {
+            background: transparent;
+            border: 1px solid #7c83fd;
+            color: #7c83fd;
+            margin-top: 16px;
+        }
+
+        #try-again-btn:hover {
+            background: #7c83fd;
+            color: white;
+        }
+
+        /* Language badge — shows detected language */
+        .language-badge {
+            display: inline-block;
+            background: #2a2d3e;
+            color: #7c83fd;
+            font-size: 0.75rem;
+            padding: 4px 10px;
+            border-radius: 20px;
+            margin-bottom: 14px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        /* --- Result Section --- */
+        /* Hidden by default — shown only after AI responds */
+        #result-section {
+            display: none;
+        }
+
+        .result-card {
+            background: #1a1d27;
+            border-radius: 12px;
+            padding: 24px;
+            border: 1px solid #2a2d3e;
+            line-height: 1.75; /* comfortable reading spacing */
+            /* 
+            white-space: pre-wrap; 
+            - respect newlines from AI 
+            - Markdown already controls formatting
+            - pre-wrap can sometimes create extra spacing or weird wrapping
+            */
+            font-size: 0.95rem;
+        }
+
+        .result-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #7c83fd;
+            margin-bottom: 14px;
+        }
+
+        /* ---- Style markdown content rendered by Marked.js --- */
+        .result-card h1, .result-card h2, .result-card h3 {
+            color: #7c83fd;
+            margin: 16px 0 8px;
+        }
+
+        .result-card p {
+            margin-bottom: 12px;
+        }
+
+        .result-card ul, .result-card ol {
+            padding-left: 20px;
+            margin-bottom: 12px;
+        }
+
+        .result-card li {
+            margin-bottom: 6px;
+        }
+
+        /* ---- Inline code styling e.g. `print` --- */
+        .result-card code {
+            background: #2a2d3e;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            color: #f8c555; /* yellow for code */
+        }
+
+        /* --- Code blocks styling --- */
+        .result-card pre {
+            background: #0f1117;
+            padding: 14px;
+            border-radius: 8px;
+            overflow-x: auto;  /* scroll if code is wide */
+            margin-bottom: 12px;
+        }
+
+        .result-card pre code {
+            background: none;
+            padding: 0;
+            color: #e0e0e0;
+        }
+
+        /* --- Loading Spinner --- */
+        #loading {
+            display: none; /* hidden by default */
+            text-align: center;
+            padding: 20px;
+            color: #888;
+            font-size: 0.95rem;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #2a2d3e;
+            border-top-color: #7c83fd;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-right: 10px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* --- Error Message --- */
+        #error-msg {
+            display: none;
+            background: #2d1a1a;
+            border: 1px solid #5c2a2a;
+            color: #ff6b6b;
+            padding: 14px;
+            border-radius: 8px;
+            margin-top: 16px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+
+        <!-- Header -->
+         <h1>🧠 AI Codebase Explainer</h1>
+         <p class="subtitle">Paste any code below and get a plain-English explanation</p>
+
+         <!-- Input Card -->
+          <div class="card">
+            <label>PASTE YOUR CODE</label>
+
+            <!-- This is where the user types/pastes code -->
+            <textarea
+                id="code-input"
+                placeholder="// Paste your code here..."
+                oninput="updateCounter()"
+            ></textarea>
+
+            <!-- Shows character count below textarea -->
+            <div id="char-counter" style="
+                text-align: right;
+                font-size: 0.78rem;
+                color: #555;
+                margin-top: 6px;
+                ">0 / 5000</div>
+
+            <!-- Error message (shown if something goes wrong) -->
+            <div id="error-msg"></div>
+
+            <!-- The main button -->
+            <button id="explain-btn" onclick="explainCode()">
+              ✨ Explain This Code
+            </button>
+
+          </div>
+              <!-- Loading indicator (shown while waiting for AI) -->
+               <div id="loading">
+                 <span class="spinner"></span> AI is reading your code...
+               </div>
+               
+               <!-- Result section (hidden until AI responds) -->
+                <div id="result-section">
+                    <div class="result-card">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+                            <div class="result-title" style="margin-bottom: 0;">💡 Explanation</div>
+
+                            <!-- Copy button -->
+                            <button
+                                id="copy-btn"
+                                onclick="copyExplanation()"
+                                style="
+                                    width: auto;
+                                    margin-top: 0;
+                                    padding: 6px 14px;
+                                    font-size: 0.8rem;
+                                    background: #2a2d3e;
+                                    border: 1px solid #3a3d5c;
+                                    border-radius: 6px;
+                                    color: #aaa;
+                                    cursor: pointer;
+                                    "
+                                >📋 Copy</button>
+                            </div>
+
+                        <!-- Language badge shows above explanation -->
+                        <div id="language-badge" class="language-badge"></div>
+
+                        <!-- AI's explanation will be injected here by JavaScript -->
+                         <!-- innerHTML instead of innerText so markdown renders -->
+                         <div id="explanation-text"></div>
+
+                         <button id="try-again-btn" onclick="tryAgain()">
+                            🔄 Try Another Snippet
+                         </button>
+                    </div>
+                </div>
+
+    </div>
+
+    <script>
+        // This JavaScript runs in the BROWSER
+        // It handles: button clicks, API calls, showing results
+
+        async function explainCode() {
+
+            // Grabbing the code which the user typed
+            const code = document.getElementById('code-input').value;
+
+            // Basic check — don't send empty requests
+            if (!code.trim()){
+                showError('Please paste some code first!');
+                return;
+            }
+
+            // --- UI: show loading state ---
+            setLoading(true);
+            hideError();
+            hideResult();
+
+            // --- Send request to OUR server ---
+            // "fetch" is the browser's built-in HTTP request tool
+            // We're calling our own backend at /explain
+            try {
+                const response = await fetch('/explain', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json' // telling server that we're sending JSON
+                    },
+                    body: JSON.stringify({ code }) // converting JS object to JSON string
+                });
+
+                // Parse the JSON response from our server
+                const data = await response.json();
+
+                if (!response.ok){
+                    // response.ok is false if status is 400,500, etc.
+                    showError(data.error || 'Something went wrong!');
+                    return;
+                }
+
+                // --- Detect language and show the explanation ---
+                const language = detectLanguage(code);
+                showResult(data.explanation, language);
+
+            } catch (err) {
+                // This catches network errors (e.g. server not running)
+                showError('Could not reach the server. Is it running?');
+            } finally {
+                // "finally" runs no matter what — success OR error
+                // Always hide loading when done
+                setLoading(false);
+            }
+        }
+
+        // ---- Simple language  ---
+        // Looks for keywords/patterns to guess the language
+        function detectLanguage(code) {
+            if (code.includes('def ') || code.includes('import ') && !code.includes('{')) return 'Python';
+            if (code.includes('function') || code.includes('const ') || code.includes('console.log')) return 'JavaScript';
+            if (code.includes('public class') || code.includes('System.out')) return 'Java';
+            if (code.includes('#include') || code.includes('cout')) return 'C++';
+            if (code.includes('<html') || code.includes('<div')) return 'HTML';
+            if (code.includes('SELECT') || code.includes('FROM')) return 'SQL';
+            return 'Code'; // fallback
+        }
+
+        // --- Helper functions---
+        // Small focused functions — each does ONE thing
+
+        // Clear everything and scroll back up
+        function tryAgain() {
+            document.getElementById('code-input').value = '';
+            hideResult();
+            hideError();
+            document.getElementById('code-input').focus();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function setLoading(isLoading) {
+            document.getElementById('loading').style.display = isLoading ? 'block' : 'none';
+            document.getElementById('explain-btn').disabled = isLoading;
+        }
+
+        function showResult(text, language){
+            // marked.parse() converts Markdown → HTML
+            // This is why asterisks now become bullet points!
+            document.getElementById('explanation-text').innerHTML = marked.parse(text);
+            document.getElementById('language-badge').innerText = language;
+            document.getElementById('result-section').style.display = 'block';
+
+            // Smoothly scroll down to the result
+            document.getElementById('result-section').scrollIntoView({
+                behavior: 'smooth'
+            });
+        }
+
+        function hideResult(){
+            document.getElementById('result-section').style.display = 'none';
+        }
+
+        function showError(message){
+            const el = document.getElementById('error-msg');
+            el.innerText = '⚠️ ' + message;
+            el.style.display = 'block'; 
+        }
+
+        function hideError() {
+            document.getElementById('error-msg').style.display = 'none';
+        }
+
+        // Updates the character counter as user types
+        function updateCounter() {
+            const code = document.getElementById('code-input').value;
+            const counter = document.getElementById('char-counter');
+            const count = code.length;
+
+            counter.innerText = `${count} / 5000`;
+
+            // Warn user when getting close to limit
+            if (count > 4500) {
+              counter.style.color = '#ff6b6b'; // red warning
+            } else if (count > 3500) {
+              counter.style.color = '#f8c555'; // yellow caution
+            } else {
+              counter.style.color = '#555'; // normal grey
+            }
+        }
+
+        // Copies the explanation text to clipboard
+        async function copyExplanation() {
+          // innerText gives us plain text without HTML tags
+          const text = document.getElementById('explanation-text').innerText;
+
+          // await → waits until the copying is done (important for async/modern browsers).
+          // navigator.clipboard.writeText(text) → copies the text to the clipboard.
+          await navigator.clipboard.writeText(text);
+
+          // Give visual feedback — change button text briefly
+          const btn = document.getElementById('copy-btn');
+          btn.innerText = '✅ Copied!';
+          btn.style.color = '#7c83fd';
+
+          // Reset after 2 seconds
+         setTimeout(() => {
+            btn.innerText = '📋 Copy';
+            btn.style.color = '#aaa';
+          }, 2000);
+        }
+    </script>
+</body>
+</html>
