@@ -8,39 +8,92 @@ const Groq = require('groq-sdk');
 // It automatically reads GROQ_API_KEY from your .env file
 const client = new Groq();
 
-// This is an "async function" ... it does work that takes time (like waiting for AI to respond), without freezing the whole program.
+// This is an "async function" ... it does work that takes time (like waiting for AI to respond), 
+// without freezing the whole program.
 async function explainCode(code) {
     
     // We will build a "prompt" ... which will be the instruction we give to the AI
     // The better the prompt, the better the explanation!
+    
+    // This is a template literal (backtick string)
+    // Everything between the backticks is sent to the AI
+    // ${code} is where the user's actual code gets inserted
     const prompt = `
-    You are a patient coding teacher explaining code to a beginner.
+You are a highly experienced senior software engineer, code reviewer, and debugger.
+Your task is to deeply analyze the provided code and return a structured, high-value response.
+Follow this exact format:
 
-    Please explain the following code in simple terms:
-    - What does it do overall? (1-2 sentences)
-    - Break it down section by section
-    - Use simple language, no jargon
-    - If you spot any interesting patterns, mention them
+🧠 1. Code Summary
+* Clearly explain what the code does in simple terms
+* Mention the main purpose and flow
 
-    Here is the code:
-    \`\`\`
-    ${code}
-    \`\`\`
-  `;
+❌ 2. Errors & Bugs
+* Identify ALL possible issues:
+  * Syntax errors
+  * Logical bugs
+  * Runtime risks
+* Explain WHY each issue is wrong
+* Do NOT assume the code is correct
+* If unsure, still point out potential problems
+
+⚠️ 3. Edge Cases / Risks
+* List scenarios where the code may fail or behave unexpectedly
+* Include invalid inputs, extreme values, missing data, etc.
+
+🚀 4. Improvements & Optimizations
+* Suggest better approaches
+* Improve performance, readability, and scalability
+* Recommend modern patterns or libraries if useful
+
+🛡️ 5. Best Practices
+* Highlight violations of:
+  * Clean code principles
+  * Naming conventions
+  * Modularity
+  * Security concerns (VERY IMPORTANT)
+* Suggest fixes
+
+🔧 6. Fixed & Improved Code
+* Provide a corrected and optimized version of the code
+* Ensure it is clean, readable, and production-ready
+* Add comments where necessary
+
+🧠 7. Complexity Analysis (if applicable)
+* Time Complexity
+* Space Complexity
+* Keep it simple and clear
+
+🔍 8. Confidence Score
+* Rate your analysis from 1-10
+* Briefly justify the score
+
+⚡ IMPORTANT RULES:
+* Be concise but insightful
+* Use bullet points and clean markdown
+* Do NOT skip sections
+* Do NOT assume correctness
+* Always provide improved code
+* Focus on maximum practical value for developers
+
+🧩 INPUT CODE:
+\`\`\`
+${code}
+\`\`\`
+`;
 
   // Send the prompt to Groq and wait for the response
   // Most AI APIs follow the same pattern ... that's intentional
   // "await" means: pause here until the AI replies, then continue
   const response = await client.chat.completions.create({
     model: 'llama-3.3-70b-versatile', // Free, powerful model by Meta
-    max_tokens: 1024, // max length of the reply
+    max_tokens: 4096, // max length of the reply ... Tokens are like "words" the AI can output
     messages: [
         {
-            role: 'system', // "system" sets the AI's personality/behavior
-            content: 'You are a helpful coding teacher for beginners.'
+            role: 'system', // "system" sets the AI's personality/behavior BEFORE the conversation
+            content: 'You are an expert senior software engineer who gives structured, deep code reviews. Always follow the exact format given. Never skip a section. Always include all 8 sections in your response.'
         },
         {
-            role: 'user', 
+            role: 'user',
             // represents the user's input (the actual prompt/question)
             content: prompt
         }
