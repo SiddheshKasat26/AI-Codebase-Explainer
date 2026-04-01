@@ -3,476 +3,210 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Codebase Explainer</title>
+    <title>AI Code Reviewer</title>
 
-    <!-- Marked.js converts Markdown text to HTML -->
-    <!-- We load it from a CDN — no install needed! -->
+    <!--
+      marked.js — converts Markdown text into HTML
+      The AI responds with markdown (** for bold, ``` for code blocks etc.)
+      marked.parse() will turn that into proper HTML for us
+      We load it from a CDN (a public server) — no install needed!
+    -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
-    <style>
-        /* --- Reset & Base --- */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box; /* makes sizing predictable */
-        }
+    <!--
+      Link to our CSS file (we'll create this in B2)
+      rel="stylesheet" tells the browser what kind of file it is
+      href="style.css" is the path — same folder as index.html
+    -->
+    <link rel="stylesheet" href="style.css" />
 
-        body {
-            font-family: 'Segoe UI', sans-serif;
-            background: #0f1117; /* dark background */
-            color: #e0e0e0; /* light text */
-            min-height: 100vh;
-            padding: 40px 20px;
-        }
-
-        /* --- Page Container --- */
-        .container {
-            max-width: 860px; /* don't stretch too wide on big screens */
-            margin: 0 auto; /* center it horizontally */
-        }
-
-        /* --- Header --- */
-        h1 {
-            text-align: center;
-            font-size: 2rem;
-            margin-bottom: 8px;
-            color: #7c83fd; /* purple accent */
-        }
-
-        .subtitle {
-            text-align: center;
-            color: #888;
-            margin-bottom: 36px;
-            font-size: 0.95rem;
-        }
-
-        /* --- Input Card --- */
-        .card {
-            background: #1a1d27;
-            border-radius: 12px;
-            padding: 24px;
-            margin-bottom: 24px;
-            border: 1px solid #2a2d3e;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 10px;
-            font-size: 0.9rem;
-            color: #aaa;
-            letter-spacing: 0.5px;
-        }
-
-        /* --- Code Textarea --- */
-        textarea {
-            width: 100%;
-            height: 220px;
-            background: #0f1117;
-            color: #e0e0e0;
-            border: 1px solid #2a2d3e;
-            border-radius: 8px;
-            padding: 14px;
-            font-family: 'Courier New', monospace; /* looks like code */
-            font-size: 0.9rem;
-            resize: vertical; /* user can drag to resize height */
-            outline: none;
-            transition: border 0.2s;
-        }
-
-        textarea:focus {
-            border-color: #7c83fd; /* purple glow when typing */
-        }
-
-        /* --- Button --- */
-        button {
-            margin-top: 16px;
-            width: 100%;
-            padding: 14px;
-            background: #7c83fd;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer; /* hand cursor on hover */
-            transition: background 0.2s;
-        }
-
-        button:hover {
-            background: #6169f5;
-        }
-
-        /* "disabled" state — while AI is thinking */
-        button:disabled {
-            background: #3a3d5c;
-            cursor: not-allowed;
-        }
-
-        /* Style for the "Try Again" button — different color */
-        #try-again-btn {
-            background: transparent;
-            border: 1px solid #7c83fd;
-            color: #7c83fd;
-            margin-top: 16px;
-        }
-
-        #try-again-btn:hover {
-            background: #7c83fd;
-            color: white;
-        }
-
-        /* Language badge — shows detected language */
-        .language-badge {
-            display: inline-block;
-            background: #2a2d3e;
-            color: #7c83fd;
-            font-size: 0.75rem;
-            padding: 4px 10px;
-            border-radius: 20px;
-            margin-bottom: 14px;
-            font-weight: 600;
-            letter-spacing: 0.5px;
-            text-transform: uppercase;
-        }
-
-        /* --- Result Section --- */
-        /* Hidden by default — shown only after AI responds */
-        #result-section {
-            display: none;
-        }
-
-        .result-card {
-            background: #1a1d27;
-            border-radius: 12px;
-            padding: 24px;
-            border: 1px solid #2a2d3e;
-            line-height: 1.75; /* comfortable reading spacing */
-            /* 
-            white-space: pre-wrap; 
-            - respect newlines from AI 
-            - Markdown already controls formatting
-            - pre-wrap can sometimes create extra spacing or weird wrapping
-            */
-            font-size: 0.95rem;
-        }
-
-        .result-title {
-            font-size: 1rem;
-            font-weight: 600;
-            color: #7c83fd;
-            margin-bottom: 14px;
-        }
-
-        /* ---- Style markdown content rendered by Marked.js --- */
-        .result-card h1, .result-card h2, .result-card h3 {
-            color: #7c83fd;
-            margin: 16px 0 8px;
-        }
-
-        .result-card p {
-            margin-bottom: 12px;
-        }
-
-        .result-card ul, .result-card ol {
-            padding-left: 20px;
-            margin-bottom: 12px;
-        }
-
-        .result-card li {
-            margin-bottom: 6px;
-        }
-
-        /* ---- Inline code styling e.g. `print` --- */
-        .result-card code {
-            background: #2a2d3e;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-family: 'Courier New', monospace;
-            font-size: 0.85rem;
-            color: #f8c555; /* yellow for code */
-        }
-
-        /* --- Code blocks styling --- */
-        .result-card pre {
-            background: #0f1117;
-            padding: 14px;
-            border-radius: 8px;
-            overflow-x: auto;  /* scroll if code is wide */
-            margin-bottom: 12px;
-        }
-
-        .result-card pre code {
-            background: none;
-            padding: 0;
-            color: #e0e0e0;
-        }
-
-        /* --- Loading Spinner --- */
-        #loading {
-            display: none; /* hidden by default */
-            text-align: center;
-            padding: 20px;
-            color: #888;
-            font-size: 0.95rem;
-        }
-
-        .spinner {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid #2a2d3e;
-            border-top-color: #7c83fd;
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-            margin-right: 10px;
-            vertical-align: middle;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        /* --- Error Message --- */
-        #error-msg {
-            display: none;
-            background: #2d1a1a;
-            border: 1px solid #5c2a2a;
-            color: #ff6b6b;
-            padding: 14px;
-            border-radius: 8px;
-            margin-top: 16px;
-        }
-    </style>
 </head>
-
 <body>
-    <div class="container">
 
-        <!-- Header -->
-         <h1>🧠 AI Codebase Explainer</h1>
-         <p class="subtitle">Paste any code below and get a plain-English explanation</p>
+    <!-- HEADER -->
+    <!-- Contains: title, subtitle, feature badges -->
+    <!-- Badges give users a quick overview of what the tool does before they use it -->
 
-         <!-- Input Card -->
-          <div class="card">
-            <label>PASTE YOUR CODE</label>
+    <header class="site-header">
 
-            <!-- This is where the user types/pastes code -->
-            <textarea
-                id="code-input"
-                placeholder="// Paste your code here..."
-                oninput="updateCounter()"
+        <h1>🔍 AI Code Reviewer</h1>
+        <p class="subtitle">
+            Paste your code and get a deep senior-engineer-level review
+        </p>
+
+        <!--
+        Badges — small pills showing the 8 main features
+        class="badges" → we'll style this as a flex row in CSS
+        Each <span> is one badge
+        -->
+
+        <div class="badges">
+            <span class="badge">🧠 Summary</span>
+            <span class="badge">❌ Bugs</span>
+            <span class="badge">⚠️ Edge Cases</span>
+            <span class="badge">🚀 Optimizations</span>
+            <span class="badge">🛡️ Best Practices</span>
+            <span class="badge">🔧 Fixed Code</span>
+            <span class="badge">📊 Complexity</span>
+            <span class="badge">🔍 Confidence Score</span>
+        </div>
+
+    </header>
+
+    <!-- MAIN CONTENT -->
+    <!-- Everything the user interacts with lives here -->
+
+    <main class="container">
+
+        <!-- INPUT SECTION -->
+        <!-- Where the user pastes their code -->
+        <!-- class="card" → we'll style cards as rounded boxes -->
+        <section class="card input-section">
+
+            <label for="code-input">PASTE YOUR CODE</label>
+
+            <!--
+            oninput="onCodeInput()" means:
+            "Every time the user types something,
+            run the onCodeInput() function in app.js"
+            This gives us LIVE updates (char counter, language detection)
+            without the user having to click anything
+            -->
+
+            <textarea 
+            id="code-input"
+            placeholder="// Paste any code here for a deep review...
+function example(data) {
+  for (var i = 0; i <= data.length; i++) {
+    console.log(data[i].name)
+  }
+}"
+            oninput="onCodeInput()"
             ></textarea>
 
-            <!-- Shows character count below textarea -->
-            <div id="char-counter" style="
-                text-align: right;
-                font-size: 0.78rem;
-                color: #555;
-                margin-top: 6px;
-                ">0 / 5000</div>
+            <!--
+            Counter row — sits below the textarea
+            Left side: live language detection ("Detected: Python")
+            Right side: character count ("234 / 5000")
+            -->
 
-            <!-- Error message (shown if something goes wrong) -->
-            <div id="error-msg"></div>
+            <div class="counter-row">
+                <span id="lang-detect">Waiting for code...</span>
+                <span id="char-counter">0 / 5000</span>
+            </div>
 
-            <!-- The main button -->
-            <button id="explain-btn" onclick="explainCode()">
-              ✨ Explain This Code
+            <!--
+            Error message box
+            Hidden by default (display:none in CSS)
+            app.js will show it if something goes wrong
+            -->
+            <div id="error-msg" class="error-msg"></div>
+
+            <!--
+            The main CTA (Call To Action) button
+            onclick="runReview()" → calls our main JS function
+            -->
+            <button id="review-btn" class="btn-primary" onclick="runReview()">
+                🔍 Run Deep Code Review
             </button>
 
-          </div>
-              <!-- Loading indicator (shown while waiting for AI) -->
-               <div id="loading">
-                 <span class="spinner"></span> AI is reading your code...
-               </div>
-               
-               <!-- Result section (hidden until AI responds) -->
-                <div id="result-section">
-                    <div class="result-card">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
-                            <div class="result-title" style="margin-bottom: 0;">💡 Explanation</div>
+        </section>
 
-                            <!-- Copy button -->
-                            <button
-                                id="copy-btn"
-                                onclick="copyExplanation()"
-                                style="
-                                    width: auto;
-                                    margin-top: 0;
-                                    padding: 6px 14px;
-                                    font-size: 0.8rem;
-                                    background: #2a2d3e;
-                                    border: 1px solid #3a3d5c;
-                                    border-radius: 6px;
-                                    color: #aaa;
-                                    cursor: pointer;
-                                    "
-                                >📋 Copy</button>
-                            </div>
+        <!-- LOADING STATE -->
+        <!-- Shown while waiting for AI response -->
+        <!-- Hidden by default — app.js toggles it -->
+        <div id="loading" class="loading">
+            <!--
+            The spinner is just a div styled with CSS
+            It has no content — CSS will make it spin
+            We'll do that with @keyframes animation in style.css
+            -->
+            <div class="loading-inner">
+                <div class="spinner"></div>
+                <span>Senior engineer is reviewing your code...</span>
+            </div>
+        </div>
 
-                        <!-- Language badge shows above explanation -->
-                        <div id="language-badge" class="language-badge"></div>
+        <!-- RESULT SECTION -->
+        <!-- Hidden by default -->
+        <!-- app.js fills each section card with AI content then makes this whole section visible -->
+        <section id="result-section" class="result-section">
+            
+            <!-- Top bar: title + language badge + copy button -->
+             <div class="result-topbar">
 
-                        <!-- AI's explanation will be injected here by JavaScript -->
-                         <!-- innerHTML instead of innerText so markdown renders -->
-                         <div id="explanation-text"></div>
+                <h2>📋 Review Report</h2>
+                <div class="topbar-actions">
+                    <!--
+                    Language badge — e.g. "PYTHON" or "JAVASCRIPT"
+                    app.js will set its text after detecting the language
+                    -->
+                    <span id="lang-badge" class="lang-badge"></span>
 
-                         <button id="try-again-btn" onclick="tryAgain()">
-                            🔄 Try Another Snippet
-                         </button>
-                    </div>
+                    <!--
+                    Copy button — copies full report text to clipboard
+                    onclick calls copyReport() in app.js
+                    -->
+                    <button class="btn-copy" id="copy-btn" onclick="copyReport()">
+                        📋 Copy Report
+                    </button>
                 </div>
+             </div>
 
-    </div>
+             <!--
+             THE 8 REVIEW CARDS
+             Each div = one section of the AI's review
 
-    <script>
-        // This JavaScript runs in the BROWSER
-        // It handles: button clicks, API calls, showing results
+             id="section-X"   → app.js finds each one and fills it with AI content
+             class="review-card TYPE" → TYPE controls the left border color:
+             info    = blue   (neutral sections)
+             danger  = red    (bugs — serious!)
+             warning = yellow (edge cases — be careful)
+             success = green  (positive: fixes, best practices
 
-        async function explainCode() {
+             They start EMPTY — JavaScript fills them later
+             -->
 
-            // Grabbing the code which the user typed
-            const code = document.getElementById('code-input').value;
+             <!-- Section 1: Code Summary — neutral info -->
+             <div id="section-1" class="review-card info"></div>
 
-            // Basic check — don't send empty requests
-            if (!code.trim()){
-                showError('Please paste some code first!');
-                return;
-            }
+             <!-- Section 2: Errors & Bugs — red, serious -->
+             <div id="section-2" class="review-card danger"></div>
 
-            // --- UI: show loading state ---
-            setLoading(true);
-            hideError();
-            hideResult();
+             <!-- Section 3: Edge Cases — yellow, caution -->
+             <div id="section-3" class="review-card warning"></div>
 
-            // --- Send request to OUR server ---
-            // "fetch" is the browser's built-in HTTP request tool
-            // We're calling our own backend at /explain
-            try {
-                const response = await fetch('/explain', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json' // telling server that we're sending JSON
-                    },
-                    body: JSON.stringify({ code }) // converting JS object to JSON string
-                });
+             <!-- Section 4: Improvements — blue, helpful -->
+             <div id="section-4" class="review-card info"></div>
 
-                // Parse the JSON response from our server
-                const data = await response.json();
+             <!-- Section 5: Best Practices — green, positive -->
+             <div id="section-5" class="review-card success"></div>
 
-                if (!response.ok){
-                    // response.ok is false if status is 400,500, etc.
-                    showError(data.error || 'Something went wrong!');
-                    return;
-                }
+             <!-- Section 6: Fixed Code — green, positive -->
+             <div id="section-6" class="review-card success"></div>
 
-                // --- Detect language and show the explanation ---
-                const language = detectLanguage(code);
-                showResult(data.explanation, language);
+             <!-- Section 7: Complexity Analysis — blue, neutral -->
+             <div id="section-7" class="review-card info"></div>
 
-            } catch (err) {
-                // This catches network errors (e.g. server not running)
-                showError('Could not reach the server. Is it running?');
-            } finally {
-                // "finally" runs no matter what — success OR error
-                // Always hide loading when done
-                setLoading(false);
-            }
-        }
+             <!-- Section 8: Confidence Score — blue, neutral -->
+             <div id="section-8" class="review-card info"></div>
 
-        // ---- Simple language  ---
-        // Looks for keywords/patterns to guess the language
-        function detectLanguage(code) {
-            if (code.includes('def ') || code.includes('import ') && !code.includes('{')) return 'Python';
-            if (code.includes('function') || code.includes('const ') || code.includes('console.log')) return 'JavaScript';
-            if (code.includes('public class') || code.includes('System.out')) return 'Java';
-            if (code.includes('#include') || code.includes('cout')) return 'C++';
-            if (code.includes('<html') || code.includes('<div')) return 'HTML';
-            if (code.includes('SELECT') || code.includes('FROM')) return 'SQL';
-            return 'Code'; // fallback
-        }
+             <!-- Reset button at the bottom -->
+             <button class="btn-secondary" onclick="tryAgain()">
+               🔄 Review Another Snippet
+             </button>
 
-        // --- Helper functions---
-        // Small focused functions — each does ONE thing
+         </section>
 
-        // Clear everything and scroll back up
-        function tryAgain() {
-            document.getElementById('code-input').value = '';
-            hideResult();
-            hideError();
-            document.getElementById('code-input').focus();
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
+    </main>
 
-        function setLoading(isLoading) {
-            document.getElementById('loading').style.display = isLoading ? 'block' : 'none';
-            document.getElementById('explain-btn').disabled = isLoading;
-        }
+    <!--
+    Our JavaScript file — loaded at the VERY BOTTOM of body
+    WHY HERE? Because JS needs all the HTML above to exist first.
+    If we put this in <head>, JS would run before the buttons
+    and textareas exist — and crash trying to find them.
+    -->
+    <script src="app.js"></script>
 
-        function showResult(text, language){
-            // marked.parse() converts Markdown → HTML
-            // This is why asterisks now become bullet points!
-            document.getElementById('explanation-text').innerHTML = marked.parse(text);
-            document.getElementById('language-badge').innerText = language;
-            document.getElementById('result-section').style.display = 'block';
-
-            // Smoothly scroll down to the result
-            document.getElementById('result-section').scrollIntoView({
-                behavior: 'smooth'
-            });
-        }
-
-        function hideResult(){
-            document.getElementById('result-section').style.display = 'none';
-        }
-
-        function showError(message){
-            const el = document.getElementById('error-msg');
-            el.innerText = '⚠️ ' + message;
-            el.style.display = 'block'; 
-        }
-
-        function hideError() {
-            document.getElementById('error-msg').style.display = 'none';
-        }
-
-        // Updates the character counter as user types
-        function updateCounter() {
-            const code = document.getElementById('code-input').value;
-            const counter = document.getElementById('char-counter');
-            const count = code.length;
-
-            counter.innerText = `${count} / 5000`;
-
-            // Warn user when getting close to limit
-            if (count > 4500) {
-              counter.style.color = '#ff6b6b'; // red warning
-            } else if (count > 3500) {
-              counter.style.color = '#f8c555'; // yellow caution
-            } else {
-              counter.style.color = '#555'; // normal grey
-            }
-        }
-
-        // Copies the explanation text to clipboard
-        async function copyExplanation() {
-          // innerText gives us plain text without HTML tags
-          const text = document.getElementById('explanation-text').innerText;
-
-          // await → waits until the copying is done (important for async/modern browsers).
-          // navigator.clipboard.writeText(text) → copies the text to the clipboard.
-          await navigator.clipboard.writeText(text);
-
-          // Give visual feedback — change button text briefly
-          const btn = document.getElementById('copy-btn');
-          btn.innerText = '✅ Copied!';
-          btn.style.color = '#7c83fd';
-
-          // Reset after 2 seconds
-         setTimeout(() => {
-            btn.innerText = '📋 Copy';
-            btn.style.color = '#aaa';
-          }, 2000);
-        }
-    </script>
 </body>
 </html>
