@@ -1,0 +1,462 @@
+   /* 
+   style.css — All visual styling for AI Code Reviewer
+
+   Structure:
+   1. CSS Variables (design tokens)
+   2. Reset & Base
+   3. Header
+   4. Container & Layout
+   5. Input Card
+   6. Textarea & Counter
+   7. Buttons
+   8. Loading State
+   9. Result Section
+   10. Review Cards
+   11. Markdown Content Styles
+   */
+
+
+   /*
+   1. CSS VARIABLES — Design Tokens
+
+   Define ALL colors, sizes, radii here.
+   Change one variable = changes the whole app's theme.
+   This is how real design systems work (like Google Material)
+   */
+:root {
+  /* Colors */
+  --bg-primary: #0f1117; /* darkest — page background */
+  --bg-secondary: #1a1d27; /* slightly lighter — cards */
+  --bg-tertiary: #2a2d3e; /* borders, hover states */
+
+  --color-primary: #7c83fd; /* purple — main brand color */
+  --color-primary-dark: #6169f5; /* darker purple — hover */
+
+  --color-text: #e0e0e0; /* main text — off white */
+  --color-muted: #888; /* secondary text — grey */
+
+  /* Section card accent colors */
+  --color-info: #7c83fd; /* blue/purple — neutral sections */
+  --color-danger: #ff6b6b; /* red — bugs & errors */
+  --color-warning: #f8c555; /* yellow — edge cases */
+  --color-success: #4caf82; /* green — fixes, best practices */
+
+  --color-error-bg: #2d1a1a; /* dark red — error message bg */
+  --color-error-border: #5c2a2a;
+  --color-error-text: #ff6b6b;
+
+  --color-code: #f8c555; /* yellow — inline code text */
+
+  /* Spacing */
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 40px;
+
+  /* Border radius */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+
+  /* Transitions */
+  --transition: 0.2s ease;
+}
+
+
+   /*
+   2. RESET & BASE
+   
+   Browsers have their own default styles (margins, fonts).
+   We reset them so our design looks the same everywhere.
+   */
+* {
+  margin: 0;
+  padding: 0;
+
+  /* 
+  border-box means: padding is INCLUDED in width calculation
+  Without this, a 200px div with 20px padding = 240px wide (surprise!)
+  With this, a 200px div with 20px padding = 200px wide (predictable) 
+  */
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  background: var(--bg-primary);
+  color: var(--color-text);
+  min-height: 100vh; /* always at least full screen tall */
+  padding: var(--spacing-xl) var(--spacing-md);
+  line-height: 1.6; /* comfortable reading spacing */
+}
+
+   /*
+   3. HEADER
+   
+   The top section with title, subtitle and badges
+   */
+.site-header {
+  text-align: center;
+  margin-bottom: var(--spacing-xl);
+}
+
+.site-header h1 {
+  font-size: 2.2rem;
+  color: var(--color-primary);
+  margin-bottom: var(--spacing-sm);
+}
+
+.subtitle {
+  color: var(--color-muted);
+  font-size: 0.95rem;
+  margin-bottom: var(--spacing-md);
+}
+
+/* Badge row — flex makes them sit side by side */
+.badges {
+  display: flex;
+  flex-wrap: wrap; /* wrap to next line on small screens */
+  justify-content: center;
+  gap: 8px;
+  margin-top: var(--spacing-md);
+}
+
+.badge {
+  background: var(--bg-secondary);
+  border: 1px solid var(--bg-tertiary);
+  border-radius: 20px; /* fully rounded = pill shape */
+  padding: 4px 12px;
+  font-size: 0.75rem;
+  color: var(--color-muted);
+}
+
+   /* 
+   4. CONTAINER & LAYOUT
+   
+   max-width stops content stretching too wide on big screens
+   margin: 0 auto centers the container horizontally
+   */
+.container {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+   /*
+   5. CARD
+   
+   Reusable style — used for input section AND review cards
+   This is the DRY principle: Don't Repeat Yourself
+   One class, used in many places
+   */
+.card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--bg-tertiary);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  margin-bottom: var(--spacing-lg);
+}
+
+/* Label above the textarea */
+.input-section label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-muted);
+  letter-spacing: 0.8px;
+  margin-bottom: 10px;
+}
+
+   /*
+   6. TEXTAREA & COUNTER ROW
+   */
+textarea {
+  width: 100%;
+  height: 240px;
+  background: var(--bg-primary);
+  color: var(--color-text);
+  border: 1px solid var(--bg-tertiary);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  font-family: 'Courier New', monospace; /* monospace = code font */
+  font-size: 0.88rem;
+  resize: vertical; /* user can drag to resize height only */
+  outline: none; /* remove default browser focus ring */
+  transition: border var(--transition);
+  line-height: 1.6;
+}
+
+/* Highlight border when user clicks into textarea */
+textarea:focus {
+  border-color: var(--color-primary);
+}
+
+/* Row below textarea: language detect (left) + char count (right) */
+.counter-row {
+  display: flex;
+  justify-content: space-between; /* push items to opposite ends */
+  align-items: center;
+  margin-top: var(--spacing-sm);
+}
+
+#lang-detect {
+  font-size: 0.75rem;
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+#char-counter {
+  font-size: 0.75rem;
+  color: var(--color-muted);
+}
+
+/* Error message box — hidden by default via display:none */
+.error-msg {
+  display: none;
+  background: var(--color-error-bg);
+  border: 1px solid var(--color-error-border);
+  color: var(--color-error-text);
+  padding: 12px var(--spacing-md);
+  border-radius: var(--radius-md);
+  margin-top: var(--spacing-md);
+  font-size: 0.9rem;
+}
+
+   /*
+   7. BUTTONS
+   
+   Three button styles:
+   - btn-primary   → main CTA (purple, filled)
+   - btn-secondary → reset button (purple, outlined)
+   - btn-copy      → small utility button
+   */
+.btn-primary {
+  display: block; /* full width */
+  width: 100%;
+  margin-top: var(--spacing-md);
+  padding: 15px;
+
+  /* gradient makes it look more polished than flat color */
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity var(--transition);
+  letter-spacing: 0.3px;
+}
+
+.btn-primary:hover   { opacity: 0.88; }
+.btn-primary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed; /* shows a 🚫 cursor when disabled */
+}
+
+.btn-secondary {
+  display: block;
+  width: 100%;
+  padding: 14px;
+  margin-top: var(--spacing-md);
+  background: transparent;
+  border: 1px solid var(--color-primary);
+  color: var(--color-primary);
+  border-radius: var(--radius-md);
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.btn-secondary:hover {
+  background: var(--color-primary);
+  color: white;
+}
+
+.btn-copy {
+  background: var(--bg-secondary);
+  border: 1px solid var(--bg-tertiary);
+  color: var(--color-muted);
+  padding: 6px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.btn-copy:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+   /*
+   8. LOADING STATE
+   
+   Hidden by default (display:none)
+   app.js will toggle this while waiting for AI
+   */
+.loading {
+  display: none; /* hidden until JS shows it */
+  text-align: center;
+  padding: 30px;
+}
+
+.loading-inner {
+  display: inline-flex; /* shrink-wrap around content */
+  align-items: center;
+  gap: 12px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--bg-tertiary);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-md) 28px;
+  color: var(--color-muted);
+}
+
+/* The spinner is just a circle with one colored edge
+   @keyframes rotates it infinitely */
+.spinner {
+  width: 20px;
+  height: 20px;
+  border: 3px solid var(--bg-tertiary); /* full grey circle */
+  border-top-color: var(--color-primary);/* one purple edge */
+  border-radius: 50%; /* make it circular */
+  animation: spin 0.8s linear infinite;
+}
+
+/* Keyframe animation — rotates from 0° to 360° */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+   /*
+   9. RESULT SECTION
+   
+   Hidden by default — shown after AI responds
+   */
+.result-section {
+  display: none; /* hidden until JS shows it */
+}
+
+/* Top bar: "Review Report" title + language badge + copy btn */
+.result-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-lg);
+}
+
+.result-topbar h2 {
+  font-size: 1.1rem;
+  color: var(--color-primary);
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Language badge — e.g. "PYTHON" */
+.lang-badge {
+  background: var(--bg-tertiary);
+  color: var(--color-primary);
+  font-size: 0.72rem;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase; /* always shows as capitals */
+}
+
+   /*
+   10. REVIEW CARDS
+   
+   Each of the 8 sections gets one of these cards.
+   The LEFT BORDER COLOR tells the user the severity:
+   
+   border-left: 4px solid [color]  ← that thick colored stripe
+   */
+.review-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--bg-tertiary);
+  border-radius: var(--radius-lg);
+  padding: 22px var(--spacing-lg);
+  margin-bottom: var(--spacing-md);
+
+  /* Default left border — gets overridden by type classes below */
+  border-left: 4px solid var(--color-info);
+}
+
+/* Type modifiers — add these alongside .review-card */
+.review-card.info { border-left-color: var(--color-info); }
+.review-card.danger { border-left-color: var(--color-danger); }
+.review-card.warning { border-left-color: var(--color-warning); }
+.review-card.success { border-left-color: var(--color-success); }
+
+   /*
+   11. MARKDOWN CONTENT STYLES
+   
+   When marked.js converts AI markdown to HTML,
+   it creates <p>, <ul>, <code>, <pre> etc.
+   We style those elements here.
+   
+   We scope ALL these styles to .review-card
+   so they only apply inside review cards — not globally
+   */
+.review-card h1,
+.review-card h2,
+.review-card h3 {
+  color: var(--color-primary);
+  margin: var(--spacing-md) 0 var(--spacing-sm);
+  font-size: 1rem;
+}
+
+.review-card p {
+  color: #ccc;
+  margin-bottom: 10px;
+  line-height: 1.75;
+}
+
+.review-card ul,
+.review-card ol {
+  padding-left: 20px;
+  margin-bottom: 10px;
+}
+
+.review-card li {
+  color: #ccc;
+  margin-bottom: 6px;
+  line-height: 1.7;
+}
+
+.review-card strong {
+  color: var(--color-text); /* bold text is brighter */
+}
+
+/* Inline code — e.g. `variableName` */
+.review-card code {
+  background: var(--bg-tertiary);
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.83rem;
+  color: var(--color-code);  /* yellow */
+}
+
+/* Code blocks — multiline code snippets */
+.review-card pre {
+  background: var(--bg-primary);
+  border: 1px solid var(--bg-tertiary);
+  padding: var(--spacing-md);
+  border-radius: var(--radius-md);
+  overflow-x: auto; /* horizontal scroll if code is wide */
+  margin: 12px 0;
+}
+
+/* Reset code styles inside pre blocks */
+.review-card pre code {
+  background: none;
+  padding: 0;
+  color: var(--color-text);
+  font-size: 0.85rem;
+}
