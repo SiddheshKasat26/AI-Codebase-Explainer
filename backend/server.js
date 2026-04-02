@@ -49,13 +49,11 @@ app.post('/explain', async(req,res)=>{
     }
 
     // Optional: length guard
-    // Very long code = very long AI response = slow & expensive
-    // Let's set a reasonable limit for now
+    // If code is very large, just log it so you can monitor usage
+    // This is observability — knowing what's happening in production
 
-    if (code.length > 5000){
-        return res.status(400).json({
-            error: 'Code is too long! Please keep it under 5000 characters.'
-        });
+    if (code.length > 20000) {
+        console.log(`Large code review request: ${code.length} characters`);
     }
 
   // --- CALLING AI ---
